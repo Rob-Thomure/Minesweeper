@@ -1,29 +1,40 @@
 package com.company;
 
 import java.util.Arrays;
+import java.util.Random;
 
 public class MineField {
+    int numMines;
     char[][] mineFieldState;
-    
-    public MineField() {
+
+    public MineField(int numMines) {
+        this.numMines = numMines;
         this.mineFieldState = new char[9][9];
         setMineFieldState();
     }
     
     private void setMineFieldState() {
         for (int i = 0; i < 9; i++) {
-            Arrays.fill(mineFieldState[i], '.');
+            Arrays.fill(mineFieldState[i], Symbols.SAFE_CELL.getValue());
         }
-        mineFieldState[0][1] = 'X';
-        mineFieldState[1][5] = 'X';
-        mineFieldState[1][8] = 'X';
-        mineFieldState[2][4] = 'X';
-        mineFieldState[3][6] = 'X';
-        mineFieldState[4][2] = 'X';
-        mineFieldState[5][4] = 'X';
-        mineFieldState[6][2] = 'X';
-        mineFieldState[7][2] = 'X';
-        mineFieldState[8][6] = 'X';
+        int placedMines = 0;
+        while (placedMines < numMines) {
+            if (placeAMine()) {
+                placedMines++;
+            }
+        }
+    }
+
+    private boolean placeAMine() {
+        Random random = new Random();
+        int row = random.nextInt(9);
+        int column = random.nextInt(9);
+        if (mineFieldState[row][column] == Symbols.SAFE_CELL.getValue()) {
+            mineFieldState[row][column] = Symbols.MINE.getValue();
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @Override
