@@ -8,23 +8,25 @@ public class MineField {
     private final char[][] hiddenMineField;
     private final char[][] visibleMineField;
     private boolean winner;
+    private boolean loser;
 
     {
         hiddenMineField = new char[9][9];
         visibleMineField = new char[9][9];
         winner = false;
+        loser = false;
     }
 
     public MineField(int numMines) {
         this.numMines = numMines;
         setMineFieldState();
-        placeMineCountOnField();
+        placeMineCountsOnHiddenField();
     }
 
     private void setMineFieldState() {
         for (int i = 0; i < 9; i++) {
-            Arrays.fill(visibleMineField[i], Symbols.SAFE_CELL.getValue());
-            Arrays.fill(hiddenMineField[i], Symbols.SAFE_CELL.getValue());
+            Arrays.fill(visibleMineField[i], Symbols.UNEXPLORED_CELL.getValue());
+            Arrays.fill(hiddenMineField[i], Symbols.UNEXPLORED_CELL.getValue());
         }
         int placedMines = 0;
         while (placedMines < numMines) {
@@ -38,7 +40,7 @@ public class MineField {
         Random random = new Random();
         int row = random.nextInt(9);
         int column = random.nextInt(9);
-        if (hiddenMineField[row][column] == Symbols.SAFE_CELL.getValue()) {
+        if (hiddenMineField[row][column] == Symbols.UNEXPLORED_CELL.getValue()) {
             hiddenMineField[row][column] = Symbols.MINE.getValue();
             return true;
         } else {
@@ -46,7 +48,7 @@ public class MineField {
         }
     }
 
-    private void placeMineCountOnField() {
+    private void placeMineCountsOnHiddenField() {
         for (int row = 0; row < 9; row++) {
             for (int column = 0; column < 9; column++) {
                 int numMines = 0;
@@ -65,34 +67,47 @@ public class MineField {
                     j = column == 0 ? column : column - 1;
                 }
                 if (numMines != 0 && hiddenMineField[row][column] != 'X') {
-                    visibleMineField[row][column] = Character.forDigit(numMines, 10);
+                    hiddenMineField[row][column] = Character.forDigit(numMines, 10);
                 }
             }
         }
     }
 
-    public boolean setMineMarks(int x, int y) {
-        int row = y - 1;
-        int column = x - 1;
+    public boolean setMineMarks(Coordinates coordinates) {
+        int row = coordinates.getY() - 1;
+        int column = coordinates.getX() - 1;
         if (Character.isDigit(visibleMineField[row][column])) {
             return false;
         } else {
-            visibleMineField[row][column] = visibleMineField[row][column] == Symbols.SAFE_CELL.getValue() ?
-                    Symbols.VISIBLE_MINE.getValue() : Symbols.SAFE_CELL.getValue();
+            visibleMineField[row][column] = visibleMineField[row][column] == Symbols.UNEXPLORED_CELL.getValue() ?
+                    Symbols.UNEXPLORED_MARKED_CELL.getValue() : Symbols.UNEXPLORED_CELL.getValue();
             setWinner();
             return true;
         }
     }
 
     private void setWinner() {
+        int unexploredMarkedCells = 0;
+        int unexploredCells = 0;
         for (int i = 0; i < 9; i++) {
             for (int j = 0; j < 9; j++) {
-                if (visibleMineField[i][j] == Symbols.VISIBLE_MINE.getValue() &&
-                        hiddenMineField[i][j] != Symbols.MINE.getValue() ||
-                        hiddenMineField[i][j] == Symbols.MINE.getValue() &&
-                        visibleMineField[i][j] != Symbols.VISIBLE_MINE.getValue()) {
-                    winner = false;
-                    return;
+                if (visibleMineField[i][j] == Symbols.UNEXPLORED_MARKED_CELL.getValue()) {
+                    unexploredMarkedCells++;
+                } else if (visibleMineField[i][j] == Symbols.UNEXPLORED_CELL.getValue()) {
+                    unexploredCells++;
+                }
+            }
+        }
+        if (unexploredMarkedCells + unexploredCells == numMines) {
+            winner = true;
+        } else if (unexploredMarkedCells == numMines) {
+            for (int i = 0; i < 9; i++) {
+                for (int j = 0; j < 9; j++) {
+                    if (visibleMineField[i][j] == Symbols.UNEXPLORED_MARKED_CELL.getValue() &&
+                            hiddenMineField[i][j] != Symbols.MINE.getValue()) {
+                        winner = false;
+                        return;
+                    }
                 }
             }
             winner = true;
@@ -101,6 +116,55 @@ public class MineField {
 
     public boolean isWinner() {
         return winner;
+    }
+
+    public boolean isLoser() {
+        return loser;
+    }
+
+    public void exploreCell(Coordinates coordinates) {
+        int row = coordinates.getY() - 1;
+        int column = coordinates.getX() - 1;
+        if (visibleMineField[row][column] == Symbols.UNEXPLORED_CELL.getValue()) {
+            revealSurroundingCells(row, column);
+        }
+        setWinner();
+    }
+
+    private void revealSurroundingCells(int row, int column) {
+        int minRow = row == 0 ? row : row - 1;
+        int maxRow = row == 8 ? row : row + 1;
+        int minColumn = column == 0 ? column : column - 1;
+        int maxColumn = column == 8 ? column : column + 1;
+
+        if (hiddenMineField[row][column] == Symbols.UNEXPLORED_CELL.getValue()) {
+            hiddenMineField[row][column] = Symbols.EXPLORED_FREE_CELL.getValue();
+            visibleMineField[row][column] = Symbols.EXPLORED_FREE_CELL.getValue();
+            for (int i = minRow; i <= maxRow; i++) {
+                for (int j = minColumn; j <= maxColumn; j++) {
+                    if (Character.isDigit(hiddenMineField[i][j])) {
+                        visibleMineField[i][j] = hiddenMineField[i][j];
+                    } else if (hiddenMineField[i][j] == Symbols.UNEXPLORED_CELL.getValue()) {
+                        visibleMineField[i][j] = Symbols.EXPLORED_FREE_CELL.getValue();
+                    }
+                    revealSurroundingCells(i, j);
+                }
+            }
+        } else if (hiddenMineField[row][column] == Symbols.MINE.getValue()) {
+            loser = true;
+        } else if (Character.isDigit(hiddenMineField[row][column])) {
+            visibleMineField[row][column] = hiddenMineField[row][column];
+        }
+    }
+
+    public void revealMines() {
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                if (hiddenMineField[i][j] == Symbols.MINE.getValue()) {
+                    visibleMineField[i][j] = hiddenMineField[i][j];
+                }
+            }
+        }
     }
 
     @Override
@@ -118,4 +182,5 @@ public class MineField {
         stringBuilder.append("-|---------|");
         return stringBuilder.toString();
     }
+
 }

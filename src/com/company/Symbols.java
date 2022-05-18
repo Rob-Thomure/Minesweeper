@@ -2,8 +2,9 @@ package com.company;
 
 public enum Symbols {
     MINE('X'),
-    VISIBLE_MINE('*'),
-    SAFE_CELL('.');
+    UNEXPLORED_MARKED_CELL('*'),
+    UNEXPLORED_CELL('.'),
+    EXPLORED_FREE_CELL('/');
 
     final char value;
 
